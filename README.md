@@ -25,6 +25,7 @@ TalentVantage is a premium, minimalist Single Page Application (SPA) designed to
 - **Integrated Chat Window**: A floating conversation box that tracks candidate contexts based on the recruiter's active selection.
 - **Ollama LLM Integration**: Connects to the local running Ollama instance (prioritizing fast models like `llama3.2`) to answer questions, generate 3-bullet summaries, or draft customized interview questions.
 - **Boilerplate-Free Streaming**: Prompt-engineered to eliminate conversational filler and cap generated tokens for rapid 3-4 second execution.
+- **Cloud Tunneling Requirement**: On cloud deployments (like Streamlit Community Cloud), the chatbot connects to the local Ollama instance via a secure port forwarding tunnel (like `ngrok`). The chatbot functions only when both Ollama and the ngrok tunnel are actively running locally on the host machine.
 
 ---
 
