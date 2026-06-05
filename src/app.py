@@ -710,7 +710,11 @@ def render_chatbot(scored_candidates=None, jd_title="", jd_text=""):
                     st.rerun()
                     
             # Connection status and model tags
-            ollama_url = "http://localhost:11434"
+            # Check if OLLAMA_URL is configured in secrets (Production/Cloud), otherwise default to Localhost (Development)
+            if "OLLAMA_URL" in st.secrets:
+                ollama_url = st.secrets["OLLAMA_URL"]
+            else:
+                ollama_url = "http://localhost:11434"
             ollama_online = check_ollama_status(ollama_url)
             
             if not ollama_online:
