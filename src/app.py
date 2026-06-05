@@ -1,9 +1,10 @@
 import os
 import sys
 
-# Define base directory relative to this file
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_DIR)
+# Define base directory as the directory containing this file (src/)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Add parent directory to python path for cloud deployment imports
+sys.path.append(os.path.dirname(BASE_DIR))
 
 import re
 import ast
@@ -466,13 +467,13 @@ def get_theme_css():
 @st.cache_resource
 def load_assets():
     try:
-        with open(os.path.join(BASE_DIR, 'models/skills_vocab.pkl'), 'rb') as f:
+        with open(os.path.join(BASE_DIR, '../models/skills_vocab.pkl'), 'rb') as f:
             skills_vocab = pickle.load(f)
-        with open(os.path.join(BASE_DIR, 'models/tfidf_vectorizer.pkl'), 'rb') as f:
+        with open(os.path.join(BASE_DIR, '../models/tfidf_vectorizer.pkl'), 'rb') as f:
             tfidf_vectorizer = pickle.load(f)
-        with open(os.path.join(BASE_DIR, 'models/match_model.pkl'), 'rb') as f:
+        with open(os.path.join(BASE_DIR, '../models/match_model.pkl'), 'rb') as f:
             match_model = pickle.load(f)
-        with open(os.path.join(BASE_DIR, 'models/metrics.pkl'), 'rb') as f:
+        with open(os.path.join(BASE_DIR, '../models/metrics.pkl'), 'rb') as f:
             model_metrics = pickle.load(f)
         return skills_vocab, tfidf_vectorizer, match_model, model_metrics
     except Exception as e:
@@ -481,7 +482,7 @@ def load_assets():
 
 @st.cache_data
 def load_bert_embeddings():
-    path = os.path.join(BASE_DIR, 'models/bert_embeddings.pkl')
+    path = os.path.join(BASE_DIR, '../models/bert_embeddings.pkl')
     if os.path.exists(path):
         with open(path, 'rb') as f:
             return pickle.load(f)
@@ -935,7 +936,7 @@ if uploaded_files:
         if cache_key in st.session_state.parsed_uploads:
             raw_candidates.append(st.session_state.parsed_uploads[cache_key])
         else:
-            temp_dir = os.path.join(BASE_DIR, 'temp_uploads')
+            temp_dir = os.path.join(BASE_DIR, '../temp_uploads')
             os.makedirs(temp_dir, exist_ok=True)
             temp_path = os.path.join(temp_dir, f.name)
             with open(temp_path, 'wb') as temp_f:
