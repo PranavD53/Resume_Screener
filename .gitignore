@@ -9,12 +9,6 @@ __pycache__/
 *.csv
 resume_data.csv
 
-# Serialized models and vocabulary
-models/*.pkl
-models/skills_vocab.pkl
-models/tfidf_vectorizer.pkl
-models/match_model.pkl
-models/metrics.pkl
 
 # Temporary uploads and outputs
 temp_uploads/
