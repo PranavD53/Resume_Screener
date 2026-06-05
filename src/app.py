@@ -1,4 +1,8 @@
 import os
+import sys
+# Add project root directory to python path for cloud deployment imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import re
 import ast
 import pickle
