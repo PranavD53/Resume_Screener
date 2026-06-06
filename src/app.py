@@ -946,7 +946,6 @@ Instruction: Keep your response extremely brief and direct (max 2-3 sentences)."
                                         hf_res = requests.post(hf_url, json=hf_payload, headers=hf_headers, timeout=30)
                                         if hf_res.status_code == 200:
                                             ai_text = hf_res.json()["choices"][0]["message"]["content"]
-                                            ai_text += "\n\n*(⚡ Cloud Backup)*"
                                             ollama_success = True
                                             break
                                         elif hf_res.status_code in [401, 403]:
