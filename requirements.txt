@@ -8,3 +8,5 @@ nltk>=3.8.1
 torch
 transformers>=4.30.0
 torchvision>=0.15.0
+pypdf
+requests
