@@ -769,94 +769,93 @@ def render_chatbot(scored_candidates=None, jd_title="", jd_text=""):
             else:
                 selected_model = "Qwen/Qwen2.5-7B-Instruct" # Backup cloud model
 
-                
-                # Determine candidate context automatically from Deep Applicant Inspector or default
+            # Determine candidate context automatically from Deep Applicant Inspector or default
+            p_chat = None
+            if scored_candidates:
+                if 'rank_select' in st.session_state and st.session_state.rank_select:
+                    selected_str = st.session_state.rank_select
+                    for c in scored_candidates:
+                        if c['profile']['name'] in selected_str:
+                            p_chat = c['profile']
+                            break
+                if not p_chat:
+                    p_chat = scored_candidates[0]['profile']
+            else:
                 p_chat = None
-                if scored_candidates:
-                    if 'rank_select' in st.session_state and st.session_state.rank_select:
-                        selected_str = st.session_state.rank_select
-                        for c in scored_candidates:
-                            if c['profile']['name'] in selected_str:
-                                p_chat = c['profile']
-                                break
-                    if not p_chat:
-                        p_chat = scored_candidates[0]['profile']
-                else:
-                    p_chat = None
-                
-                # History container
-                chat_history_key = f"chat_hist_{p_chat['filename']}" if p_chat else "chat_hist_general"
-                if chat_history_key not in st.session_state:
-                    st.session_state[chat_history_key] = []
-                
-                # Professional welcoming greeting message (like Swiggy / Zomato chatbot)
-                if not st.session_state[chat_history_key]:
-                    if p_chat:
-                        greeting = f"Hi! I am your AI Talent Co-Pilot. I can help you summarize {p_chat['name']}'s profile, generate behavioral interview questions, or analyze skill gaps. What would you like to do?"
-                    else:
-                        greeting = "Hi! I am your AI Talent Co-Pilot. I can help you screen resumes and answer recruitment queries. Please upload resumes to start analyzing specific candidates!"
-                    st.session_state[chat_history_key] = [
-                        {
-                            "role": "assistant",
-                            "content": greeting
-                        }
-                    ]
-                    
-                # Scrollable chat messages container
-                chat_scroll_area = st.container()
-                with chat_scroll_area:
-                    st.markdown('<div class="chat-messages-scroll"></div>', unsafe_allow_html=True)
-                    
-                    # Render messages as custom chat bubbles in HTML
-                    chat_html = "<div class='chat-bubbles-container'>"
-                    for msg in st.session_state[chat_history_key]:
-                        role_class = "user-bubble" if msg['role'] == "user" else "assistant-bubble"
-                        sender_name = "You" if msg['role'] == "user" else "AI Talent Co-Pilot"
-                        # Convert markdown to html for display
-                        formatted_content = md_to_html(msg['content'])
-                        chat_html += f'<div class="chat-row {"user-row" if msg["role"] == "user" else "assistant-row"}">'
-                        chat_html += f'<div class="chat-sender">{sender_name}</div>'
-                        chat_html += f'<div class="chat-bubble {role_class}">{formatted_content}</div>'
-                        chat_html += '</div>'
-                    chat_html += "</div>"
-                    st.markdown(chat_html, unsafe_allow_html=True)
-                
-                # Preset Prompts
-                preset_prompt = ""
+            
+            # History container
+            chat_history_key = f"chat_hist_{p_chat['filename']}" if p_chat else "chat_hist_general"
+            if chat_history_key not in st.session_state:
+                st.session_state[chat_history_key] = []
+            
+            # Professional welcoming greeting message (like Swiggy / Zomato chatbot)
+            if not st.session_state[chat_history_key]:
                 if p_chat:
-                    st.markdown("<div style='font-size:0.75rem; color:var(--text-mid); margin-bottom:5px; font-weight:600; font-family:Inter;'>SUGGESTED ACTIONS:</div>", unsafe_allow_html=True)
-                    col_p1, col_p2 = st.columns(2)
-                    with col_p1:
-                        st.markdown('<div class="preset-btn-marker"></div>', unsafe_allow_html=True)
-                        if st.button("📝 Summarize", key="sum_btn", help="Summarize Candidate"):
-                            preset_prompt = "Provide a 3-bullet point summary of this candidate's core qualifications, years of experience, and highest degree."
-                    with col_p2:
-                        st.markdown('<div class="preset-btn-marker"></div>', unsafe_allow_html=True)
-                        if st.button("❓ Interview Prep", key="q_btn", help="Generate Interview Questions"):
-                            preset_prompt = "Generate 5 customized technical and behavioral interview questions for this candidate based on their work history."
+                    greeting = f"Hi! I am your AI Talent Co-Pilot. I can help you summarize {p_chat['name']}'s profile, generate behavioral interview questions, or analyze skill gaps. What would you like to do?"
+                else:
+                    greeting = "Hi! I am your AI Talent Co-Pilot. I can help you screen resumes and answer recruitment queries. Please upload resumes to start analyzing specific candidates!"
+                st.session_state[chat_history_key] = [
+                    {
+                        "role": "assistant",
+                        "content": greeting
+                    }
+                ]
                 
-                # Chat Input Form (custom styled to stay neatly at the bottom)
-                with st.form(key="chat_input_form", clear_on_submit=True):
-                    col_in, col_send = st.columns([4.2, 0.8])
-                    with col_in:
-                        user_input = st.text_input("", placeholder="Ask a question...", key="chat_msg_input", label_visibility="collapsed")
-                    with col_send:
-                        submit_chat = st.form_submit_button("➤")
+            # Scrollable chat messages container
+            chat_scroll_area = st.container()
+            with chat_scroll_area:
+                st.markdown('<div class="chat-messages-scroll"></div>', unsafe_allow_html=True)
                 
-                final_prompt = preset_prompt if preset_prompt else (user_input if submit_chat else "")
+                # Render messages as custom chat bubbles in HTML
+                chat_html = "<div class='chat-bubbles-container'>"
+                for msg in st.session_state[chat_history_key]:
+                    role_class = "user-bubble" if msg['role'] == "user" else "assistant-bubble"
+                    sender_name = "You" if msg['role'] == "user" else "AI Talent Co-Pilot"
+                    # Convert markdown to html for display
+                    formatted_content = md_to_html(msg['content'])
+                    chat_html += f'<div class="chat-row {"user-row" if msg["role"] == "user" else "assistant-row"}">'
+                    chat_html += f'<div class="chat-sender">{sender_name}</div>'
+                    chat_html += f'<div class="chat-bubble {role_class}">{formatted_content}</div>'
+                    chat_html += '</div>'
+                chat_html += "</div>"
+                st.markdown(chat_html, unsafe_allow_html=True)
+            
+            # Preset Prompts
+            preset_prompt = ""
+            if p_chat:
+                st.markdown("<div style='font-size:0.75rem; color:var(--text-mid); margin-bottom:5px; font-weight:600; font-family:Inter;'>SUGGESTED ACTIONS:</div>", unsafe_allow_html=True)
+                col_p1, col_p2 = st.columns(2)
+                with col_p1:
+                    st.markdown('<div class="preset-btn-marker"></div>', unsafe_allow_html=True)
+                    if st.button("📝 Summarize", key="sum_btn", help="Summarize Candidate"):
+                        preset_prompt = "Provide a 3-bullet point summary of this candidate's core qualifications, years of experience, and highest degree."
+                with col_p2:
+                    st.markdown('<div class="preset-btn-marker"></div>', unsafe_allow_html=True)
+                    if st.button("❓ Interview Prep", key="q_btn", help="Generate Interview Questions"):
+                        preset_prompt = "Generate 5 customized technical and behavioral interview questions for this candidate based on their work history."
+            
+            # Chat Input Form (custom styled to stay neatly at the bottom)
+            with st.form(key="chat_input_form", clear_on_submit=True):
+                col_in, col_send = st.columns([4.2, 0.8])
+                with col_in:
+                    user_input = st.text_input("", placeholder="Ask a question...", key="chat_msg_input", label_visibility="collapsed")
+                with col_send:
+                    submit_chat = st.form_submit_button("➤")
+            
+            final_prompt = preset_prompt if preset_prompt else (user_input if submit_chat else "")
+            
+            if final_prompt:
+                st.session_state[chat_history_key].append({"role": "user", "content": final_prompt})
                 
-                if final_prompt:
-                    st.session_state[chat_history_key].append({"role": "user", "content": final_prompt})
+                # Fetch LLM response
+                if p_chat:
+                    # Construct a compact candidates summary to minimize prompt context size and speed up ingestion
+                    c_skills = ", ".join(p_chat.get('skills', []))
+                    c_exp = p_chat.get('experience_years', 0)
+                    c_degree = p_chat.get('education_degree', 'N/A')
+                    c_text_snippet = p_chat.get('text', '')[:1200]
                     
-                    # Fetch LLM response
-                    if p_chat:
-                        # Construct a compact candidates summary to minimize prompt context size and speed up ingestion
-                        c_skills = ", ".join(p_chat.get('skills', []))
-                        c_exp = p_chat.get('experience_years', 0)
-                        c_degree = p_chat.get('education_degree', 'N/A')
-                        c_text_snippet = p_chat.get('text', '')[:1200]
-                        
-                        system_instruction = f"""You are Talent Co-Pilot, a professional recruitment assistant.
+                    system_instruction = f"""You are Talent Co-Pilot, a professional recruitment assistant.
 Analyzing applicant '{p_chat['name']}' for the role '{jd_title}'.
 
 Candidate Profile:
@@ -868,93 +867,93 @@ Candidate Profile:
 JD Summary: {jd_text[:800]}
 
 Instruction: Provide extremely concise, direct answers (max 2-3 sentences or 3 bullet points). Do not include conversational filler, introductory remarks, or repeat context details."""
-                    else:
-                        system_instruction = """You are Talent Co-Pilot, a professional recruitment assistant. 
+                else:
+                    system_instruction = """You are Talent Co-Pilot, a professional recruitment assistant. 
 Help the user understand how to use the Resume Screening application (upload resumes, select job descriptions, and view rankings).
 Instruction: Keep your response extremely brief and direct (max 2-3 sentences)."""
-                    
-                    ollama_success = False
-                    ai_text = ""
-                    error_msg = ""
-                    
-                    if ollama_online:
-                        try:
-                            with st.spinner("AI is thinking (Local)..."):
-                                response = requests.post(
-                                    f"{ollama_url.rstrip('/')}/api/chat",
-                                    json={
-                                        "model": selected_model,
-                                        "messages": [
-                                            {
-                                                "role": "user",
-                                                "content": f"{system_instruction}\n\nQuestion: {final_prompt}"
-                                            }
-                                        ],
-                                        "stream": False,
-                                        "options": {
-                                            "temperature": 0.3,
-                                            "num_predict": 120
+                
+                ollama_success = False
+                ai_text = ""
+                error_msg = ""
+                
+                if ollama_online:
+                    try:
+                        with st.spinner("AI is thinking (Local)..."):
+                            response = requests.post(
+                                f"{ollama_url.rstrip('/')}/api/chat",
+                                json={
+                                    "model": selected_model,
+                                    "messages": [
+                                        {
+                                            "role": "user",
+                                            "content": f"{system_instruction}\n\nQuestion: {final_prompt}"
                                         }
-                                    },
-                                    timeout=5 # Fail fast to check cloud fallback
-                                )
-                                
-                                if response.status_code == 200:
-                                    ai_text = response.json().get('message', {}).get('content', '')
-                                    ollama_success = True
-                                else:
-                                    error_msg = f"Local engine returned status {response.status_code}."
-                        except Exception as ex:
-                            error_msg = str(ex)
-                    else:
-                        error_msg = "Local connection offline."
-                        
-                    # Fallback to Cloud Backup
-                    if not ollama_success:
-                        if hf_token:
-                            try:
-                                with st.spinner("Local offline. Querying Cloud Backup..."):
-                                    hf_url = "https://api-inference.huggingface.co/v1/chat/completions"
-                                    hf_headers = {
-                                        "Content-Type": "application/json",
-                                        "Authorization": f"Bearer {hf_token}"
+                                    ],
+                                    "stream": False,
+                                    "options": {
+                                        "temperature": 0.3,
+                                        "num_predict": 120
                                     }
-                                    hf_payload = {
-                                        "model": "Qwen/Qwen2.5-7B-Instruct",
-                                        "messages": [
-                                            {
-                                                "role": "system",
-                                                "content": system_instruction
-                                            },
-                                            {
-                                                "role": "user",
-                                                "content": final_prompt
-                                            }
-                                        ],
-                                        "max_tokens": 120,
-                                        "temperature": 0.3
-                                    }
-                                    
-                                    hf_res = requests.post(hf_url, json=hf_payload, headers=hf_headers, timeout=20)
-                                    if hf_res.status_code == 200:
-                                        ai_text = hf_res.json()["choices"][0]["message"]["content"]
-                                        ai_text += "\n\n*(⚡ Cloud Backup)*"
-                                        ollama_success = True
-                                    elif hf_res.status_code == 401 or hf_res.status_code == 403:
-                                        error_msg = "Cloud Backup unauthorized. Please check that a valid token is configured in application secrets."
-                                    else:
-                                        error_msg = f"Cloud Backup status code: {hf_res.status_code}"
-                            except Exception as hf_ex:
-                                error_msg = f"Local offline ({error_msg}). Cloud Backup failed: {hf_ex}"
-                        else:
-                            error_msg = f"Local offline ({error_msg}). Cloud Backup is not configured (missing fallback token)."
+                                },
+                                timeout=5 # Fail fast to check cloud fallback
+                            )
                             
-                    if ollama_success:
-                        st.session_state[chat_history_key].append({"role": "assistant", "content": ai_text})
-                    else:
-                        st.session_state[chat_history_key].append({"role": "assistant", "content": f"⚠️ Connection Error: {error_msg}"})
+                            if response.status_code == 200:
+                                ai_text = response.json().get('message', {}).get('content', '')
+                                ollama_success = True
+                            else:
+                                error_msg = f"Local engine returned status {response.status_code}."
+                    except Exception as ex:
+                        error_msg = str(ex)
+                else:
+                    error_msg = "Local connection offline."
                     
-                    st.rerun()
+                # Fallback to Cloud Backup
+                if not ollama_success:
+                    if hf_token:
+                        try:
+                            with st.spinner("Local offline. Querying Cloud Backup..."):
+                                hf_url = "https://api-inference.huggingface.co/v1/chat/completions"
+                                hf_headers = {
+                                    "Content-Type": "application/json",
+                                    "Authorization": f"Bearer {hf_token}"
+                                }
+                                hf_payload = {
+                                    "model": "Qwen/Qwen2.5-7B-Instruct",
+                                    "messages": [
+                                        {
+                                            "role": "system",
+                                            "content": system_instruction
+                                        },
+                                        {
+                                            "role": "user",
+                                            "content": final_prompt
+                                        }
+                                    ],
+                                    "max_tokens": 120,
+                                    "temperature": 0.3
+                                }
+                                
+                                hf_res = requests.post(hf_url, json=hf_payload, headers=hf_headers, timeout=20)
+                                if hf_res.status_code == 200:
+                                    ai_text = hf_res.json()["choices"][0]["message"]["content"]
+                                    ai_text += "\n\n*(⚡ Cloud Backup)*"
+                                    ollama_success = True
+                                elif hf_res.status_code == 401 or hf_res.status_code == 403:
+                                    error_msg = "Cloud Backup unauthorized. Please check that a valid token is configured in application secrets."
+                                else:
+                                    error_msg = f"Cloud Backup status code: {hf_res.status_code}"
+                        except Exception as hf_ex:
+                            error_msg = f"Local offline ({error_msg}). Cloud Backup failed: {hf_ex}"
+                    else:
+                        error_msg = f"Local offline ({error_msg}). Cloud Backup is not configured (missing fallback token)."
+                        
+                if ollama_success:
+                    st.session_state[chat_history_key].append({"role": "assistant", "content": ai_text})
+                else:
+                    st.session_state[chat_history_key].append({"role": "assistant", "content": f"⚠️ Connection Error: {error_msg}"})
+                
+                st.rerun()
 
 # ----------------- Theme Setup (Strict Dark Mode) -----------------
 st.markdown(get_theme_css(), unsafe_allow_html=True)
@@ -1235,10 +1234,10 @@ with tab_rankings:
             # Match Gauge
             try:
                 fig_gauge = go.Figure(go.Indicator(
-                    mode = "gauge+number",
+                    mode = "gauge",
                     value = c_detail['match_score'],
-                    domain = {'x': [0, 1], 'y': [0, 1]},
-                    title = {'text': "Match Compatibility", 'font': {'size': 18, 'family': 'Outfit'}},
+                    domain = {'x': [0, 1], 'y': [0.2, 1]},
+                    title = {'text': "Match Compatibility", 'font': {'size': 18, 'family': 'Outfit', 'color': '#f3f4f6'}},
                     gauge = {
                         'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#8b949e"},
                         'bar': {'color': "#818cf8"},
@@ -1252,6 +1251,12 @@ with tab_rankings:
                         ]
                     }
                 ))
+                fig_gauge.add_annotation(
+                    text=f"<span style='font-size:42px; font-weight:800; color:#f3f4f6; font-family:Outfit;'>{c_detail['match_score']}%</span>",
+                    x=0.5,
+                    y=0.15,
+                    showarrow=False
+                )
                 fig_gauge.update_layout(
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)',
