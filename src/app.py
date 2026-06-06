@@ -19,7 +19,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
 from src.parser import parse_resume, extract_skills_from_text, parse_education_level, parse_required_experience
-st.write("Internet Access Test:", requests.get("https://httpbin.org/status/200", timeout=5).status_code)
+
 # Set Streamlit Page Config
 st.set_page_config(
     page_title="TalentVantage AI | Intelligent Talent Acquisition",
