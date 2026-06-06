@@ -691,15 +691,41 @@ def render_chatbot(scored_candidates=None, jd_title="", jd_text=""):
         with chat_container:
             st.markdown('<div class="chat-window-marker"></div>', unsafe_allow_html=True)
             
+            # Connection status and config
+            # Check if OLLAMA_URL is configured in secrets (Production/Cloud), otherwise default to Localhost (Development)
+            if "OLLAMA_URL" in st.secrets:
+                ollama_url = st.secrets["OLLAMA_URL"]
+            else:
+                ollama_url = "http://localhost:11434"
+            ollama_online = check_ollama_status(ollama_url)
+            
+            hf_token = ""
+            if hasattr(st.secrets, "get"):
+                hf_token = st.secrets.get("HF_TOKEN", "")
+            elif "HF_TOKEN" in st.secrets:
+                hf_token = st.secrets["HF_TOKEN"]
+            if not hf_token:
+                hf_token = os.environ.get("HF_TOKEN", "")
+                
+            if ollama_online:
+                status_color = "#10b981" # Green
+                status_text = "Co-Pilot Online"
+            elif hf_token:
+                status_color = "#818cf8" # Indigo/Purple
+                status_text = "Cloud Backup Active"
+            else:
+                status_color = "#ef4444" # Red
+                status_text = "Service Offline"
+                
             # Header with close button
             col_header, col_close = st.columns([5, 1])
             with col_header:
                 st.markdown(f"""
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="chat-status-dot"></span>
+                    <span class="chat-status-dot" style="background-color:{status_color}; box-shadow:0 0 8px {status_color};"></span>
                     <div>
                         <div style="font-weight:700; font-size:0.95rem; color:var(--text-high); font-family:'Outfit';">Talent Co-Pilot</div>
-                        <div style="font-size:0.75rem; color:#10b981; font-family:'Inter';">Online & Ready</div>
+                        <div style="font-size:0.75rem; color:{status_color}; font-family:'Inter';">{status_text}</div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -708,21 +734,21 @@ def render_chatbot(scored_candidates=None, jd_title="", jd_text=""):
                 if st.button("✕", key="close_chat_btn", help="Close chat"):
                     st.session_state.chat_open = False
                     st.rerun()
-                    
-            # Connection status and model tags
-            # Check if OLLAMA_URL is configured in secrets (Production/Cloud), otherwise default to Localhost (Development)
-            if "OLLAMA_URL" in st.secrets:
-                ollama_url = st.secrets["OLLAMA_URL"]
-            else:
-                ollama_url = "http://localhost:11434"
-            ollama_online = check_ollama_status(ollama_url)
             
-            if not ollama_online:
-                st.warning("⚠️ Local AI service is offline. Please launch the backend service.")
-            else:
+            # Show a quiet alert if both local and cloud services are offline
+            if not ollama_online and not hf_token:
+                st.markdown(
+                    "<div style='background-color:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.2); padding: 8px; border-radius: 6px; font-size: 0.75rem; color: #ef4444; margin-bottom: 8px; font-family: Inter;'>"
+                    "⚠️ Talent Co-Pilot is offline. Launch local backend service or configure the Cloud AI Fallback token in secrets to resume."
+                    "</div>",
+                    unsafe_allow_html=True
+                )
+                
+            # Resolve selected model
+            selected_model = "llama3.2:latest"
+            if ollama_online:
                 models = get_ollama_models(ollama_url)
                 # Prioritize faster text-only models (like llama3.2, llama3, phi3, mistral, gemma) and avoid large multimodal models like llava by default
-                selected_model = "llama3.2:latest"
                 if models:
                     pref_keywords = ["llama3.2", "llama3", "phi3", "mistral", "gemma", "qwen"]
                     found_pref = False
@@ -740,6 +766,9 @@ def render_chatbot(scored_candidates=None, jd_title="", jd_text=""):
                             selected_model = non_llava[0]
                         else:
                             selected_model = models[0]
+            else:
+                selected_model = "Qwen/Qwen2.5-7B-Instruct" # Backup cloud model
+
                 
                 # Determine candidate context automatically from Deep Applicant Inspector or default
                 p_chat = None
@@ -844,34 +873,86 @@ Instruction: Provide extremely concise, direct answers (max 2-3 sentences or 3 b
 Help the user understand how to use the Resume Screening application (upload resumes, select job descriptions, and view rankings).
 Instruction: Keep your response extremely brief and direct (max 2-3 sentences)."""
                     
-                    try:
-                        with st.spinner("AI is thinking..."):
-                            response = requests.post(
-                                f"{ollama_url.rstrip('/')}/api/chat",
-                                json={
-                                    "model": selected_model,
-                                    "messages": [
-                                        {
-                                            "role": "user",
-                                            "content": f"{system_instruction}\n\nQuestion: {final_prompt}"
+                    ollama_success = False
+                    ai_text = ""
+                    error_msg = ""
+                    
+                    if ollama_online:
+                        try:
+                            with st.spinner("AI is thinking (Local)..."):
+                                response = requests.post(
+                                    f"{ollama_url.rstrip('/')}/api/chat",
+                                    json={
+                                        "model": selected_model,
+                                        "messages": [
+                                            {
+                                                "role": "user",
+                                                "content": f"{system_instruction}\n\nQuestion: {final_prompt}"
+                                            }
+                                        ],
+                                        "stream": False,
+                                        "options": {
+                                            "temperature": 0.3,
+                                            "num_predict": 120
                                         }
-                                    ],
-                                    "stream": False,
-                                    "options": {
-                                        "temperature": 0.3,
-                                        "num_predict": 120
+                                    },
+                                    timeout=5 # Fail fast to check cloud fallback
+                                )
+                                
+                                if response.status_code == 200:
+                                    ai_text = response.json().get('message', {}).get('content', '')
+                                    ollama_success = True
+                                else:
+                                    error_msg = f"Local engine returned status {response.status_code}."
+                        except Exception as ex:
+                            error_msg = str(ex)
+                    else:
+                        error_msg = "Local connection offline."
+                        
+                    # Fallback to Cloud Backup
+                    if not ollama_success:
+                        if hf_token:
+                            try:
+                                with st.spinner("Local offline. Querying Cloud Backup..."):
+                                    hf_url = "https://api-inference.huggingface.co/v1/chat/completions"
+                                    hf_headers = {
+                                        "Content-Type": "application/json",
+                                        "Authorization": f"Bearer {hf_token}"
                                     }
-                                },
-                                timeout=240
-                            )
+                                    hf_payload = {
+                                        "model": "Qwen/Qwen2.5-7B-Instruct",
+                                        "messages": [
+                                            {
+                                                "role": "system",
+                                                "content": system_instruction
+                                            },
+                                            {
+                                                "role": "user",
+                                                "content": final_prompt
+                                            }
+                                        ],
+                                        "max_tokens": 120,
+                                        "temperature": 0.3
+                                    }
+                                    
+                                    hf_res = requests.post(hf_url, json=hf_payload, headers=hf_headers, timeout=20)
+                                    if hf_res.status_code == 200:
+                                        ai_text = hf_res.json()["choices"][0]["message"]["content"]
+                                        ai_text += "\n\n*(⚡ Cloud Backup)*"
+                                        ollama_success = True
+                                    elif hf_res.status_code == 401 or hf_res.status_code == 403:
+                                        error_msg = "Cloud Backup unauthorized. Please check that a valid token is configured in application secrets."
+                                    else:
+                                        error_msg = f"Cloud Backup status code: {hf_res.status_code}"
+                            except Exception as hf_ex:
+                                error_msg = f"Local offline ({error_msg}). Cloud Backup failed: {hf_ex}"
+                        else:
+                            error_msg = f"Local offline ({error_msg}). Cloud Backup is not configured (missing fallback token)."
                             
-                            if response.status_code == 200:
-                                ai_text = response.json().get('message', {}).get('content', '')
-                                st.session_state[chat_history_key].append({"role": "assistant", "content": ai_text})
-                            else:
-                                st.session_state[chat_history_key].append({"role": "assistant", "content": f"Error: AI engine returned status {response.status_code}"})
-                    except Exception as ex:
-                        st.session_state[chat_history_key].append({"role": "assistant", "content": f"Error querying AI engine: {ex}"})
+                    if ollama_success:
+                        st.session_state[chat_history_key].append({"role": "assistant", "content": ai_text})
+                    else:
+                        st.session_state[chat_history_key].append({"role": "assistant", "content": f"⚠️ Connection Error: {error_msg}"})
                     
                     st.rerun()
 
