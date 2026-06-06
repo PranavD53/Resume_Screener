@@ -937,7 +937,7 @@ Instruction: Keep your response extremely brief and direct (max 2-3 sentences)."
                                     "temperature": 0.3
                                 }
                                 
-                                hf_res = requests.post(hf_url, json=hf_payload, headers=hf_headers, timeout=20)
+                                hf_res = requests.post(hf_url, json=hf_payload, headers=hf_headers, timeout=30)
                                 if hf_res.status_code == 200:
                                     ai_text = hf_res.json()["choices"][0]["message"]["content"]
                                     ai_text += "\n\n*(⚡ Cloud Backup)*"
@@ -947,6 +947,9 @@ Instruction: Keep your response extremely brief and direct (max 2-3 sentences)."
                                 else:
                                     error_msg = f"Cloud Backup status code: {hf_res.status_code}"
                         except Exception as hf_ex:
+                            import traceback
+                            print(f"[Chatbot Error Details]: {hf_ex}")
+                            traceback.print_exc()
                             error_msg = "Cloud Backup connection failed. Please check your network connection and verify your API token."
                     else:
                         error_msg = "Cloud Backup is not configured. Please ensure a valid API token is configured in your environment or application secrets."
