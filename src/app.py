@@ -916,7 +916,10 @@ Instruction: Keep your response extremely brief and direct (max 2-3 sentences)."
                     if hf_token:
                         try:
                             with st.spinner("Local offline. Querying Cloud Backup..."):
-                                hf_url = "https://api-inference.huggingface.co/v1/chat/completions"
+                                hf_urls = [
+                                    "https://api-inference.huggingface.co/v1/chat/completions",
+                                    "https://router.huggingface.co/v1/chat/completions"
+                                ]
                                 hf_headers = {
                                     "Content-Type": "application/json",
                                     "Authorization": f"Bearer {hf_token}"
@@ -937,15 +940,25 @@ Instruction: Keep your response extremely brief and direct (max 2-3 sentences)."
                                     "temperature": 0.3
                                 }
                                 
-                                hf_res = requests.post(hf_url, json=hf_payload, headers=hf_headers, timeout=30)
-                                if hf_res.status_code == 200:
-                                    ai_text = hf_res.json()["choices"][0]["message"]["content"]
-                                    ai_text += "\n\n*(⚡ Cloud Backup)*"
-                                    ollama_success = True
-                                elif hf_res.status_code == 401 or hf_res.status_code == 403:
-                                    error_msg = "Cloud Backup unauthorized. Please check that a valid token is configured in application secrets."
-                                else:
-                                    error_msg = f"Cloud Backup status code: {hf_res.status_code}"
+                                last_ex = None
+                                for hf_url in hf_urls:
+                                    try:
+                                        hf_res = requests.post(hf_url, json=hf_payload, headers=hf_headers, timeout=30)
+                                        if hf_res.status_code == 200:
+                                            ai_text = hf_res.json()["choices"][0]["message"]["content"]
+                                            ai_text += "\n\n*(⚡ Cloud Backup)*"
+                                            ollama_success = True
+                                            break
+                                        elif hf_res.status_code in [401, 403]:
+                                            error_msg = "Cloud Backup unauthorized. Please check that a valid token is configured in application secrets."
+                                            break
+                                        else:
+                                            error_msg = f"Cloud Backup status code: {hf_res.status_code}"
+                                    except Exception as ex:
+                                        last_ex = ex
+                                
+                                if not ollama_success and last_ex:
+                                    raise last_ex
                         except Exception as hf_ex:
                             import traceback
                             print(f"[Chatbot Error Details]: {hf_ex}")
