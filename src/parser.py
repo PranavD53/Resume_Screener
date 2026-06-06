@@ -93,25 +93,37 @@ def extract_phone(text):
 # Extract Location
 def extract_location(text):
     try:
+        # Match location prefixes first (very high confidence)
+        prefix_match = re.search(r'(?:location|address|residence|reside\s+in|lives\s+in)\s*:\s*([^\n,|]+(?:,\s*[^\n,|]+)?)', text, re.IGNORECASE)
+        if prefix_match:
+            loc = prefix_match.group(1).strip()
+            if len(loc) < 50 and not any(x in loc.lower() for x in ['email', 'phone', 'resume', 'skills']):
+                return loc
+
+        # Scan line by line to find the first line containing a city, state/country pattern
         location_patterns = [
-            r'(?:location|address|residence|reside\s+in|lives\s+in)\s*:\s*([^\n,|]+(?:,\s*[^\n,|]+)?)',
-            r'\b([A-Z][a-zA-Z\s]+,\s*[A-Z]{2}(?:\s+\d{5})?)\b' # E.g. Woonsocket, RI
+            r'\b([A-Z][a-z]+(?: [A-Z][a-z]+)*,\s*[A-Z][a-z]+(?: [A-Z][a-z]+)*)\b', # E.g. Hyderabad, Telangana
+            r'\b([A-Z][a-z]+(?: [A-Z][a-z]+)*,\s*[A-Z]{2}(?:\s+\d{5})?)\b'          # E.g. Woonsocket, RI
         ]
-        for pattern in location_patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                loc = match.group(1).strip()
-                if len(loc) < 50 and not any(x in loc.lower() for x in ['email', 'phone', 'resume', 'skills']):
-                    return loc
-                    
-        # Fallback first city-state line
-        lines = [line.strip() for line in text.split('\n') if line.strip()][:15]
+        
+        # Check the first 25 lines for location
+        lines = [line.strip() for line in text.split('\n') if line.strip()][:25]
         for line in lines:
-            if re.search(r'\b[A-Z][a-z]+,\s*[A-Z][a-z]+\b|\b[A-Z][a-z]+,\s*[A-Z]{2}\b', line):
-                return line
+            # Exclude lines that look like social links, emails, tech stacks, or major sections
+            if any(x in line.lower() for x in [
+                'email', 'phone', 'resume', 'skills', 'html', 'css', 'js', 'java', 'react', 'node', 
+                'github', 'linkedin', 'objective', 'education', 'projects', 'languages', 'frameworks',
+                'libraries', 'tools', 'c++', 'c#', 'python', 'sql', 'git', 'figma'
+            ]):
+                continue
+            for pattern in location_patterns:
+                match = re.search(pattern, line)
+                if match:
+                    return match.group(1).strip()
     except Exception as e:
         print(f"Location extraction error: {e}")
     return "N/A"
+
 
 # Extract Candidate Name
 def extract_name(text, file_path=None):
@@ -124,7 +136,14 @@ def extract_name(text, file_path=None):
             if not cleaned_line or len(cleaned_line) > 40:
                 continue
                 
-            if any(x in cleaned_line.lower() for x in ['email', 'phone', 'mobile', 'address', 'resume', 'cv', 'curriculum', 'page', 'profile', 'objective', 'link', 'github', 'linkedin', 'http', '@', 'location', 'nationality', 'born']):
+            # Exclude section headers, technologies, and other metadata lines
+            if any(x in cleaned_line.lower() for x in [
+                'email', 'phone', 'mobile', 'address', 'resume', 'cv', 'curriculum', 'page', 
+                'profile', 'objective', 'link', 'github', 'linkedin', 'http', '@', 'location', 
+                'nationality', 'born', 'skills', 'education', 'experience', 'projects', 
+                'contributions', 'languages', 'summary', 'certifications', 'activities', 
+                'interests', 'objectives', 'work', 'technical', 'software'
+            ]):
                 continue
                 
             # Clean punctuation from words
@@ -278,6 +297,28 @@ def extract_experience(text):
         print(f"Experience extraction error: {e}")
     return 0.0
 
+SKILLS_BLACKLIST = {
+    'approach', 'balance', 'com', 'concept', 'content', 'dec', 'development', 'email', 'engineer',
+    'fast', 'features', 'friendly', 'its', 'languages', 'management', 'memory', 'phone', 'project',
+    'publisher', 'research', 'skills', 'website', 'objective', 'education', 'experience', 'projects',
+    'contributions', 'languages', 'summary', 'interests', 'hobbies', 'candidate', 'name', 'role',
+    'roles', 'team', 'teams', 'year', 'years', 'month', 'months', 'jan', 'feb', 'mar', 'apr', 'may',
+    'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec', 'github', 'linkedin', 'http', 'location', 'address',
+    'mobile', 'resume', 'cv', 'page', 'objective', 'link', 'work', 'job', 'description',
+    'application', 'user', 'client', 'server', 'data', 'details', 'information', 'system', 'systems',
+    'process', 'processes', 'support', 'supporting', 'service', 'services', 'organization', 'organizations',
+    'record', 'records', 'error', 'errors', 'omissions', 'irregularities', 'flow', 'transactions', 'ledger',
+    'daily', 'identifies', 'resolves', 'provide', 'accurate', 'tfcu', 'ability', 'managing', 'multi', 'tasks',
+    'lead', 'motivate', 'decisions', 'solve', 'problems', 'prioritize', 'stand', 'walk', 'hours', 'time',
+    'take', 'initiative', 'exhibit', 'flexibility', 'structure', 'translate', 'technical', 'specifications',
+    'highly', 'motivated', 'energetic', 'personality', 'monitor', 'credit', 'union', 'general', 'various',
+    'aim', 'needs', 'solutions', 'business', 'requirements', 'results', 'focus', 'focused', 'delivery',
+    'deliver', 'delivering', 'key', 'performance', 'indicators', 'success', 'successful', 'successfully',
+    'driven', 'passion', 'passionate', 'explore', 'exploring', 'strong', 'learning', 'teamwork', 'problem-solving',
+    'strong skills', 'fast-learning approach', 'hands-on experience', 'strong teamwork', 'problem-solving skills',
+    'journal', 'web-based', 'software engineer'
+}
+
 # Helper to check boundary for skills including symbols (e.g. C++, C#)
 def get_skill_pattern(skill):
     skill_lower = skill.lower()
@@ -309,10 +350,13 @@ def extract_skills(text, skills_vocab):
                 # Fallback for longer skill phrases
                 extracted.append(skill)
                 
-        return sorted(list(set(extracted)))
+        # Filter out noisy non-skill terms using the blacklist
+        filtered = [s for s in extracted if s.lower() not in SKILLS_BLACKLIST]
+        return sorted(list(set(filtered)))
     except Exception as e:
         print(f"Skills extraction error: {e}")
     return []
+
 
 # Expose skill extractor for import
 def extract_skills_from_text(text, skills_vocab):
