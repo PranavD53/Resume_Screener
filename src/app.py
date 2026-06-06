@@ -701,11 +701,14 @@ def render_chatbot(scored_candidates=None, jd_title="", jd_text=""):
             
             hf_token = ""
             if hasattr(st.secrets, "get"):
-                hf_token = st.secrets.get("HF_TOKEN", "")
+                hf_token = st.secrets.get("HF_TOKEN", st.secrets.get("hf_token", ""))
             elif "HF_TOKEN" in st.secrets:
                 hf_token = st.secrets["HF_TOKEN"]
+            elif "hf_token" in st.secrets:
+                hf_token = st.secrets["hf_token"]
+                
             if not hf_token:
-                hf_token = os.environ.get("HF_TOKEN", "")
+                hf_token = os.environ.get("HF_TOKEN", os.environ.get("hf_token", ""))
                 
             if ollama_online:
                 status_color = "#10b981" # Green
