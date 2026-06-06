@@ -464,7 +464,7 @@ def get_theme_css():
     """
 
 # ----------------- Cache Assets Loader -----------------
-@st.cache_resource
+@st.cache_resource(show_spinner="Loading screening assets...")
 def load_assets():
     try:
         with open(os.path.join(BASE_DIR, '../models/skills_vocab.pkl'), 'rb') as f:
@@ -480,7 +480,7 @@ def load_assets():
         st.error(f"Failed to load trained model assets. Ensure `model.py` was executed. Details: {e}")
         return None, None, None, None
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def load_bert_embeddings():
     path = os.path.join(BASE_DIR, '../models/bert_embeddings.pkl')
     if os.path.exists(path):
@@ -488,7 +488,7 @@ def load_bert_embeddings():
             return pickle.load(f)
     return {}
 
-@st.cache_resource
+@st.cache_resource(show_spinner="Initializing screening engine...")
 def load_bert_model():
     import torch
     torch.set_num_threads(4)
@@ -944,9 +944,9 @@ Instruction: Keep your response extremely brief and direct (max 2-3 sentences)."
                                 else:
                                     error_msg = f"Cloud Backup status code: {hf_res.status_code}"
                         except Exception as hf_ex:
-                            error_msg = f"Local offline ({error_msg}). Cloud Backup failed: {hf_ex}"
+                            error_msg = "Cloud Backup connection failed. Please check your network connection and verify your API token."
                     else:
-                        error_msg = f"Local offline ({error_msg}). Cloud Backup is not configured (missing fallback token)."
+                        error_msg = "Cloud Backup is not configured. Please ensure a valid API token is configured in your environment or application secrets."
                         
                 if ollama_success:
                     st.session_state[chat_history_key].append({"role": "assistant", "content": ai_text})
