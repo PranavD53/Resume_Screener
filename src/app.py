@@ -1096,6 +1096,58 @@ for idx, profile in enumerate(raw_candidates):
     else:
         candidates.append(profile)
 
+# Semantic groups and matching for skills
+SEMANTIC_GROUPS = [
+    # SQL & Relational Databases group
+    {"sql", "relational database", "relational databases", "database", "databases", "rdbms", "sql database", "sql databases", "structured query language", "postgresql", "mysql", "oracle", "sqlite"},
+    # NoSQL/Non-relational group
+    {"nosql", "mongodb", "cassandra", "redis", "dynamodb", "firebase", "non-relational database", "non-relational databases"},
+    # Machine Learning group
+    {"machine learning", "ml", "deep learning", "artificial intelligence", "ai", "neural networks", "model training", "predictive models"},
+    # Natural Language Processing group
+    {"nlp", "natural language processing", "text mining", "information retrieval", "text analysis"},
+    # Web Development group
+    {"web development", "frontend", "backend", "fullstack", "web application", "web applications"},
+    # HTML/CSS group
+    {"html", "css", "html5", "css3"},
+    # React group
+    {"react", "react.js", "reactjs", "react native"},
+    # Node group
+    {"node", "node.js", "nodejs"},
+    # Docker/Kubernetes/DevOps group
+    {"devops", "ci/cd", "continuous integration", "continuous deployment", "docker", "kubernetes", "k8s", "jenkins", "git"},
+    # QA/Testing group
+    {"testing", "qa", "quality assurance", "unit testing", "integration testing", "test automation", "jest", "junit", "selenium"},
+    # Cloud Providers group
+    {"aws", "azure", "gcp", "google cloud", "cloud", "cloud computing"},
+]
+
+def check_skill_match(s_cand, s_jd):
+    s_cand_l = s_cand.lower().strip()
+    s_jd_l = s_jd.lower().strip()
+    
+    # 1. Exact match
+    if s_cand_l == s_jd_l:
+        return True
+        
+    # 2. Singular/plural normalization
+    if s_cand_l.rstrip('s') == s_jd_l.rstrip('s'):
+        return True
+        
+    # 3. Handle common abbreviations or compound terms (.js)
+    for suffix in ['.js', 'js']:
+        if s_cand_l.endswith(suffix) and s_cand_l[:-len(suffix)] == s_jd_l:
+            return True
+        if s_jd_l.endswith(suffix) and s_jd_l[:-len(suffix)] == s_cand_l:
+            return True
+            
+    # 4. Semantic groups check
+    for group in SEMANTIC_GROUPS:
+        if s_cand_l in group and s_jd_l in group:
+            return True
+            
+    return False
+
 # Extract JD values dynamically
 jd_skills = extract_skills_from_text(jd_text, skills_vocab)
 jd_min_exp = parse_required_experience(jd_text) if jd_preset == "Custom Input" else req_exp_val
@@ -1110,7 +1162,14 @@ scored_candidates = []
 for profile in candidates:
     try:
         # Calculate common structural features
-        common_skills = list(set(profile['skills']).intersection(set(jd_skills)))
+        common_skills = []
+        for jd_s in jd_skills:
+            matched_by = [c_s for c_s in profile['skills'] if check_skill_match(c_s, jd_s)]
+            if matched_by:
+                common_skills.append(jd_s)
+        common_skills = sorted(list(set(common_skills)))
+        missing_skills = sorted(list(set(jd_skills) - set(common_skills)))
+        
         overlap_count = len(common_skills)
         overlap_ratio = overlap_count / len(jd_skills) if len(jd_skills) > 0 else 0.0
         
@@ -1165,7 +1224,7 @@ for profile in candidates:
             'match_score': final_score,
             'sim': sim,
             'common_skills': common_skills,
-            'missing_skills': sorted(list(set(jd_skills) - set(profile['skills']))),
+            'missing_skills': missing_skills,
             'exp_diff': exp_diff,
             'edu_diff': edu_diff,
             'exp_years': c_exp,

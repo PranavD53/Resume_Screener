@@ -109,17 +109,28 @@ def extract_location(text):
         # Check the first 25 lines for location
         lines = [line.strip() for line in text.split('\n') if line.strip()][:25]
         for line in lines:
-            # Exclude lines that look like social links, emails, tech stacks, or major sections
+            # Exclude lines that look like social links, emails, tech stacks, major sections, or academic/professional headings
             if any(x in line.lower() for x in [
                 'email', 'phone', 'resume', 'skills', 'html', 'css', 'js', 'java', 'react', 'node', 
                 'github', 'linkedin', 'objective', 'education', 'projects', 'languages', 'frameworks',
-                'libraries', 'tools', 'c++', 'c#', 'python', 'sql', 'git', 'figma'
+                'libraries', 'tools', 'c++', 'c#', 'python', 'sql', 'git', 'figma', 'science', 'tech',
+                'technology', 'bachelor', 'master', 'phd', 'degree', 'university', 'college', 'school',
+                'institute', 'engineering', 'major', 'minor', 'gpa', 'g.p.a', 'course', 'curriculum',
+                'grade', 'class', 'certificate', 'certification', 'training', 'intern', 'internship',
+                'developer', 'analyst', 'designer', 'architect', 'lead', 'manager'
             ]):
                 continue
             for pattern in location_patterns:
                 match = re.search(pattern, line)
                 if match:
-                    return match.group(1).strip()
+                    candidate_loc = match.group(1).strip()
+                    # Final check: make sure the extracted location doesn't contain academic/professional terms
+                    if not any(kw in candidate_loc.lower() for kw in [
+                        'science', 'tech', 'technology', 'bachelor', 'master', 'phd', 'degree',
+                        'university', 'college', 'school', 'institute', 'engineering', 'major', 'minor',
+                        'developer', 'manager', 'designer', 'analyst'
+                    ]):
+                        return candidate_loc
     except Exception as e:
         print(f"Location extraction error: {e}")
     return "N/A"
@@ -221,11 +232,11 @@ def parse_required_experience(req_str):
 # Extract Experience in Years (combines text mentions and overlapping date intervals)
 def extract_experience(text):
     try:
-        # Normalize text dashes and spaces for date matching
-        text_clean = text.lower()
-        text_clean = text_clean.replace('\u2013', '-').replace('\u2014', '-').replace('\u2212', '-').replace('–', '-').replace('—', '-')
-        text_clean = text_clean.replace('\u00a0', ' ').replace('&nbsp;', ' ')
-        text_clean = re.sub(r'\s+', ' ', text_clean)
+        # Normalize text dashes and spaces for date matching, preserving newlines
+        text_normalized = text.lower()
+        text_normalized = text_normalized.replace('\u2013', '-').replace('\u2014', '-').replace('\u2212', '-').replace('–', '-').replace('—', '-')
+        text_normalized = text_normalized.replace('\u00a0', ' ').replace('&nbsp;', ' ')
+        text_normalized = re.sub(r'[ \t\r\f\v]+', ' ', text_normalized)
         
         # Regex to capture months and years
         month_numeric = r'(?:\d{1,2}[-/\s]+)'
@@ -234,7 +245,48 @@ def extract_experience(text):
         present_pat = r'(?:present|current|till\s*date|now|ongoing|till\s*now)'
         
         span_regex = rf'({date_pat})\s*(?:-|to|until)\s*({date_pat}|{present_pat})'
-        spans = re.findall(span_regex, text_clean)
+        
+        # Find all matches with their positions, skipping education/school spans
+        spans = []
+        edu_keywords = [
+            'university', 'college', 'school', 'academy', 'institute', 'education', 
+            'bachelor', 'master', 'phd', 'gpa', 'high school', 'b.s.', 'm.s.', 
+            'b.tech', 'm.tech', 'b.a.', 'm.a.', 'undergraduate', 'postgraduate', 
+            'doctorate', 'study', 'studied', 'degree'
+        ]
+        job_keywords = ['professor', 'lecturer', 'instructor', 'teaching assistant', 'research assistant', 'employee', 'staff']
+        
+        for match in re.finditer(span_regex, text_normalized):
+            start_str, end_str = match.groups()
+            
+            # Find the line containing the match
+            match_start = match.start()
+            match_end = match.end()
+            
+            line_start = text_normalized.rfind('\n', 0, match_start) + 1
+            line_end = text_normalized.find('\n', match_end)
+            if line_end == -1:
+                line_end = len(text_normalized)
+                
+            current_line = text_normalized[line_start:line_end].strip()
+            
+            # Find the previous line
+            prev_line = ""
+            if line_start > 1:
+                prev_line_start = text_normalized.rfind('\n', 0, line_start - 1) + 1
+                prev_line = text_normalized[prev_line_start:line_start - 1].strip()
+                
+            # Skip this span if it is on/under an academic education line
+            is_education = False
+            for kw in edu_keywords:
+                if kw in current_line or kw in prev_line:
+                    # Allow university jobs like professors or researchers
+                    if not any(jkw in current_line or jkw in prev_line for jkw in job_keywords):
+                        is_education = True
+                        break
+            
+            if not is_education:
+                spans.append((start_str, end_str))
         
         def parse_dt(d_str):
             d_str = d_str.strip()
@@ -283,8 +335,9 @@ def extract_experience(text):
             calc_exp = round(total_months / 12.0, 1)
             
         # Scan for direct text mentions like "X+ years of experience"
+        text_clean_for_mentions = re.sub(r'\s+', ' ', text_normalized)
         mention_regex = r'\b(\d+(?:\.\d+)?)\+?\s*(?:years?|yrs?)\s*(?:of\s*)?(?:experience|work|industry|professional)'
-        mentions = re.findall(mention_regex, text_clean)
+        mentions = re.findall(mention_regex, text_clean_for_mentions)
         mention_exp = 0.0
         if mentions:
             try:
