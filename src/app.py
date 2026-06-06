@@ -1299,69 +1299,245 @@ with tab_rankings:
                 
             # Tab 3: ATS Check
             with detail_tabs[2]:
-                st.write("**Applicant Tracking System (ATS) Compatibility Matrix**")
+                st.markdown("### 📊 Advanced Recruiter-Grade ATS Scorecard")
+                st.write("This professional evaluation scores candidate credentials, layout indexability, and content impact on a weighted 100-point scale.")
+                
+                # Setup categories and components
                 word_count = len(p_detail['text'].split())
                 has_email = p_detail['email'] != "N/A" and "@" in p_detail['email']
                 has_phone = p_detail['phone'] != "N/A" and any(char.isdigit() for char in p_detail['phone'])
                 
-                headers = ['education', 'experience', 'skills', 'objective', 'projects', 'summary']
-                found_headers = [h for h in headers if h in p_detail['text'].lower()]
+                # 1. Core Skills Alignment (30 pts max)
+                SOFT_SKILLS_SET = {
+                    'agile', 'scrum', 'kanban', 'project management', 'program management', 'product management',
+                    'leadership', 'communication', 'teamwork', 'problem-solving', 'collaboration', 'critical thinking',
+                    'time management', 'adaptability', 'creativity', 'scrum master', 'scrummaster', 'devops',
+                    'sdlc', 'waterfall', 'presentation', 'mentoring', 'negotiation', 'analytical'
+                }
                 
-                # 5 categories, 20 points each.
-                ats_score = 0
-                checklists = []
+                jd_tech_skills = [s for s in jd_skills if s.lower() not in SOFT_SKILLS_SET]
+                jd_soft_skills = [s for s in jd_skills if s.lower() in SOFT_SKILLS_SET]
                 
-                # 1. Optimal Word Count (20 pts)
-                if 400 <= word_count <= 1000:
-                    ats_score += 20
-                    checklists.append(("✅ Optimal Length ({} words)".format(word_count), "Resume word count is in the ideal 400-1000 word range for thorough indexation."))
+                cand_tech_skills = [s for s in c_detail['common_skills'] if s.lower() not in SOFT_SKILLS_SET]
+                cand_soft_skills = [s for s in c_detail['common_skills'] if s.lower() in SOFT_SKILLS_SET]
+                
+                # Tech Match (20 pts)
+                tech_total = len(jd_tech_skills)
+                tech_match = len(cand_tech_skills)
+                tech_ratio = tech_match / tech_total if tech_total > 0 else 1.0
+                if tech_ratio >= 0.75:
+                    score_tech = 20
+                    desc_tech = f"**Excellent Technical Fit** ({tech_match}/{tech_total} matching). The candidate possesses the majority of required hard skills and technical requirements."
+                elif tech_ratio >= 0.40:
+                    score_tech = 14
+                    desc_tech = f"**Moderate Technical Fit** ({tech_match}/{tech_total} matching). Candidate has some core technical skills but is missing key stack components."
+                elif tech_ratio >= 0.15:
+                    score_tech = 6
+                    desc_tech = f"**Low Technical Fit** ({tech_match}/{tech_total} matching). Significant gaps identified in the required technical stacks."
                 else:
-                    checklists.append(("❌ Suboptimal Length ({} words)".format(word_count), "Resume length should ideally be between 400 and 1000 words. Too short (<400) or too wordy (>1000) reduces parsing score."))
-                
-                # 2. Contact Details Check (20 pts)
-                if has_email and has_phone:
-                    ats_score += 20
-                    checklists.append(("✅ Contact Details Complete", "Found both a valid email address and phone number for candidate outreach."))
+                    score_tech = 0
+                    desc_tech = f"**Poor Technical Fit** ({tech_match}/{tech_total} matching). Almost no technical skills overlap with job description."
+                    
+                # Soft Match (10 pts)
+                soft_total = len(jd_soft_skills)
+                soft_match = len(cand_soft_skills)
+                soft_ratio = soft_match / soft_total if soft_total > 0 else 1.0
+                if soft_ratio >= 0.75:
+                    score_soft = 10
+                    desc_soft = f"**Strong Process Alignment** ({soft_match}/{soft_total} matching). Meets agile, methodology, and soft skills targets."
+                elif soft_ratio >= 0.40:
+                    score_soft = 7
+                    desc_soft = f"**Moderate Process Alignment** ({soft_match}/{soft_total} matching). Meets some process requirements."
+                elif soft_ratio >= 0.15:
+                    score_soft = 3
+                    desc_soft = f"**Low Process Alignment** ({soft_match}/{soft_total} matching). Significant soft skills or methodology gaps."
                 else:
-                    checklists.append(("❌ Incomplete Contact Details", "Ensure a clearly readable email address and telephone number are included."))
-                
-                # 3. Standard Layout Headers Check (20 pts)
-                if len(found_headers) >= 4:
-                    ats_score += 20
-                    checklists.append(("✅ Logical section headers found ({}/6)".format(len(found_headers)), "ATS can successfully read and parse key sections. Headers found: {}.".format(", ".join(found_headers))))
-                elif 2 <= len(found_headers) <= 3:
-                    ats_score += 10
-                    checklists.append(("⚠️ Partial Section Headers ({}/6)".format(len(found_headers)), "Headers found: {}. Standardize headers (e.g. 'Work Experience', 'Education') to improve score.".format(", ".join(found_headers))))
-                else:
-                    checklists.append(("❌ Missing Section Headers ({}/6)".format(len(found_headers)), "Failed to find standard section headers. Use explicit headers like 'Skills', 'Experience', and 'Education'."))
-                
-                # 4. Core Skill Match Check (20 pts)
-                total_jd_skills = len(jd_skills)
-                common_skills_count = len(c_detail['common_skills'])
-                skill_ratio = common_skills_count / total_jd_skills if total_jd_skills > 0 else 0.0
-                if skill_ratio >= 0.30:
-                    ats_score += 20
-                    checklists.append(("✅ Critical Skill Density ({:.1f}%)".format(skill_ratio * 100), "Candidate matches {}/{} core job skills, passing the strict 30% ATS skill-matching threshold.".format(common_skills_count, total_jd_skills)))
-                else:
-                    checklists.append(("❌ Low Skill Density ({:.1f}%)".format(skill_ratio * 100), "Candidate only matches {}/{} core job skills, falling below the required 30% threshold for automated filtering.".format(common_skills_count, total_jd_skills)))
-                
-                # 5. Experience Compatibility Check (20 pts)
+                    score_soft = 0
+                    desc_soft = f"**No Process Alignment** ({soft_match}/{soft_total} matching). Missing required soft skills or project methodologies."
+                    
+                # 2. Role Fit & Career Progression (25 pts max)
+                # Experience Alignment (15 pts)
                 exp_diff = c_detail['exp_diff']
                 if exp_diff >= 0:
-                    ats_score += 20
-                    checklists.append(("✅ Experience Requirement Met", "Candidate has {} years of experience, meeting or exceeding the required {} years (excess of {} yrs).".format(c_detail['exp_years'], jd_min_exp, exp_diff)))
+                    score_exp = 15
+                    desc_exp = f"**Experience Target Met**. Candidate has {c_detail['exp_years']} years of experience, meeting or exceeding the required {jd_min_exp} years (excess of {exp_diff:.1f} yrs)."
                 elif exp_diff >= -1.5:
-                    ats_score += 10
-                    checklists.append(("⚠️ Experience Slightly Below Target", "Candidate has {} years of experience, slightly short of the required {} years (deficit of {} yrs).".format(c_detail['exp_years'], jd_min_exp, abs(exp_diff))))
+                    score_exp = 9
+                    desc_exp = f"**Experience Slightly Short**. Candidate has {c_detail['exp_years']} years of experience, slightly short of target {jd_min_exp} years (deficit of {abs(exp_diff):.1f} yrs)."
                 else:
-                    checklists.append(("❌ Insufficient Experience", "Candidate has only {} years of experience, significantly short of the required {} years (deficit of {} yrs).".format(c_detail['exp_years'], jd_min_exp, abs(exp_diff))))
+                    score_exp = 3
+                    desc_exp = f"**Experience Deficit**. Candidate has only {c_detail['exp_years']} years of experience, significantly short of target {jd_min_exp} years (deficit of {abs(exp_diff):.1f} yrs)."
+                    
+                # Career Growth (5 pts)
+                progression_keywords = ['lead', 'senior', 'principal', 'promoted', 'spearheaded', 'pioneered', 'architected', 'manager', 'director']
+                found_progression = [kw for kw in progression_keywords if kw in p_detail['text'].lower()]
+                found_progression = list(set(found_progression))
+                if len(found_progression) >= 2:
+                    score_prog = 5
+                    desc_prog = f"**Career Growth Indicators Found**. Resume text contains keywords indicating leadership, promotion, or ownership: {', '.join(found_progression[:3])}."
+                else:
+                    score_prog = 2
+                    desc_prog = "**No clear indicators of progression/leadership keywords** found in resume text."
+                    
+                # Stability Check (5 pts)
+                years = re.findall(r'\b(20\d{2})\b', p_detail['text'])
+                duplicate_years = len(years) - len(set(years))
+                if duplicate_years > 8:
+                    score_stability = 3
+                    desc_stability = "**Stability Warning**: Frequent date shifts detected in text. Recommend auditing for short job durations."
+                else:
+                    score_stability = 5
+                    desc_stability = "**Stability Verified**. Dates represent consistent and standard tenure profiles."
+                    
+                # 3. Education & Credentials Match (15 pts max)
+                # Education Fit (10 pts)
+                edu_diff = c_detail['edu_diff']
+                if edu_diff >= 0:
+                    score_edu = 10
+                    desc_edu = f"**Degree Level Met/Exceeded**. Candidate has {p_detail['education_degree']} (matches or exceeds required level)."
+                elif edu_diff == -1:
+                    score_edu = 5
+                    desc_edu = f"**Degree Slightly Below Target**. Candidate has {p_detail['education_degree']}, but target requires 1 higher qualification level."
+                else:
+                    score_edu = 1
+                    desc_edu = f"**Degree Deficit**. Candidate has {p_detail['education_degree']} (target is significantly higher)."
+                    
+                # Certifications (5 pts)
+                certifications_keywords = ['pmp', 'aws certified', 'csm', 'cissp', 'oracle', 'certified scrum', 'ccna', 'ccnp', 'itil', 'prince2', 'gcp', 'azure certified']
+                found_certs = [cert for cert in certifications_keywords if cert in p_detail['text'].lower()]
+                found_certs = list(set(found_certs))
+                if found_certs:
+                    score_certs = 5
+                    desc_certs = f"**Professional Credentials Found**. Identified industry certification keywords: {', '.join(found_certs)}."
+                else:
+                    score_certs = 2
+                    desc_certs = "**No industry certifications identified** in resume text."
+                    
+                # 4. Layout Readability & ATS Indexability (15 pts max)
+                # Layout Structure (10 pts)
+                headers = ['education', 'experience', 'skills', 'objective', 'projects', 'summary', 'languages', 'certifications']
+                found_headers = [h for h in headers if h in p_detail['text'].lower()]
+                found_headers = list(set(found_headers))
+                if len(found_headers) >= 4:
+                    score_headers = 10
+                    desc_headers = f"**Strong Sectioning Found**. ATS can read standard layout zones. Headers found: {', '.join(found_headers[:5])}."
+                elif len(found_headers) >= 2:
+                    score_headers = 5
+                    desc_headers = f"**Partial Sectioning**. Standardize headers (e.g. use 'Education', 'Work History') to improve ATS parser parsing accuracy."
+                else:
+                    score_headers = 0
+                    desc_headers = "**Poor Layout Structure**. Missing key standard section headers. Text blocks may fail to index correctly."
+                    
+                # Paragraph Density / formatting warnings (5 pts)
+                paragraphs = [p.strip() for p in p_detail['text'].split('\n') if len(p.strip()) > 0]
+                overly_dense = [p for p in paragraphs if len(p.split()) > 150]
+                if overly_dense:
+                    score_density = 2
+                    desc_density = f"**Formatting Warning**: Detected {len(overly_dense)} blocks of dense text exceeding 150 words. Large block paragraphs reduce parser readability."
+                else:
+                    score_density = 5
+                    desc_density = "**Formatting Spacing Passed**. Document text is well-sectioned and uses digestible paragraphs."
+                    
+                # 5. Content Quality & Impact (15 pts max)
+                # Action Verbs (5 pts)
+                action_verbs = ['spearheaded', 'designed', 'implemented', 'optimized', 'engineered', 'pioneered', 'led', 'built', 'managed', 'architected', 'conducted', 'developed', 'collaborated', 'created', 'streamlined', 'increased', 'reduced']
+                found_verbs = [v for v in action_verbs if rf'\b{v}' in p_detail['text'].lower()]
+                found_verbs = list(set(found_verbs))
+                if len(found_verbs) >= 5:
+                    score_verbs = 5
+                    desc_verbs = f"**High Impact Verbs Used**. Found strong professional action-oriented vocabulary: {', '.join(found_verbs[:5])}."
+                else:
+                    score_verbs = 2
+                    desc_verbs = f"**Passive Voice / Low Impact Verbs**. Found only {len(found_verbs)} robust action verbs. Increase verbs like 'spearheaded' to sound more impact-driven."
+                    
+                # Quantifiable Metrics (5 pts)
+                metrics_matches = re.findall(r'\b\d+(?:\.\d+)?%|\$\d+(?:\.\d+)?\s*(?:million|k|billion)?|\b\d+\+\s*users\b|\b\d+\s*fold\b', p_detail['text'])
+                metrics_matches = list(set(metrics_matches))
+                if len(metrics_matches) >= 2:
+                    score_metrics = 5
+                    desc_metrics = f"**Quantified Results Found**. Document contains numerical business metrics showing achievements: {', '.join(metrics_matches[:3])}."
+                else:
+                    score_metrics = 1
+                    desc_metrics = "**No Quantifiable Metrics**. Recruiters prefer achievements backstopped with figures (e.g. 'boosted efficiency by 15%')."
+                    
+                # Word Count (5 pts)
+                if 400 <= word_count <= 1000:
+                    score_words = 5
+                    desc_words = f"**Optimal Length** ({word_count} words). Ideal size for modern single-page or double-page indexation."
+                else:
+                    score_words = 2
+                    desc_words = f"**Suboptimal Length** ({word_count} words). Resume is too short or wordy. Aim for 400 - 1000 words."
+                    
+                # Calculate final score
+                ats_score = (score_tech + score_soft + score_exp + score_prog + score_stability + 
+                             score_edu + score_certs + score_headers + score_density + 
+                             score_verbs + score_metrics + score_words)
                 
-                st.metric("ATS Formatting Compatibility Score", f"{ats_score}/100")
-                st.progress(ats_score / 100.0)
+                # Render ATS Dashboard Gauge
+                col_m1, col_m2 = st.columns([1, 2])
+                with col_m1:
+                    st.metric("Advanced Recruiter-Grade Score", f"{ats_score}/100")
+                with col_m2:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.progress(ats_score / 100.0)
                 
-                for label, desc in checklists:
-                    st.write(f"**{label}**")
-                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc}</span>", unsafe_allow_html=True)
+                st.markdown("---")
+                st.write("**ATS Scorecard Details**")
+                
+                # Render Accordion Expanders
+                with st.expander(f"🎯 Core Skills Alignment (Score: {score_tech + score_soft}/30)"):
+                    st.write(f"**Technical/Hard Skills Match ({score_tech}/20)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_tech}</span>", unsafe_allow_html=True)
+                    st.write(f"**Soft/Methodology Skills Match ({score_soft}/10)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_soft}</span>", unsafe_allow_html=True)
+                    
+                with st.expander(f"📈 Experience & Role Seniority (Score: {score_exp + score_prog + score_stability}/25)"):
+                    st.write(f"**Experience Compatibility ({score_exp}/15)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_exp}</span>", unsafe_allow_html=True)
+                    st.write(f"**Career Progression Heuristics ({score_prog}/5)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_prog}</span>", unsafe_allow_html=True)
+                    st.write(f"**Tenure & Stability Check ({score_stability}/5)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_stability}</span>", unsafe_allow_html=True)
+                    
+                with st.expander(f"🎓 Education & Credentials Fit (Score: {score_edu + score_certs}/15)"):
+                    st.write(f"**Degree Qualification Match ({score_edu}/10)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_edu}</span>", unsafe_allow_html=True)
+                    st.write(f"**Industry Credentials & Certifications ({score_certs}/5)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_certs}</span>", unsafe_allow_html=True)
+                    
+                with st.expander(f"📋 Layout Indexability & Formatting (Score: {score_headers + score_density}/15)"):
+                    st.write(f"**ATS Sectioning and Headers ({score_headers}/10)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_headers}</span>", unsafe_allow_html=True)
+                    st.write(f"**Formatting Spacing & Text Density ({score_density}/5)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_density}</span>", unsafe_allow_html=True)
+                    
+                with st.expander(f"✍️ Action Quality & Quantifiable Impact (Score: {score_verbs + score_metrics + score_words}/15)"):
+                    st.write(f"**Impact-Driven Action Verbs ({score_verbs}/5)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_verbs}</span>", unsafe_allow_html=True)
+                    st.write(f"**Measurable & Quantifiable Results ({score_metrics}/5)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_metrics}</span>", unsafe_allow_html=True)
+                    st.write(f"**Optimal Word Density ({score_words}/5)**")
+                    st.write(f"<span style='color:#8b949e; font-size:0.85rem;'>{desc_words}</span>", unsafe_allow_html=True)
+                
+                # Recommendations list
+                st.markdown("<br>**💡 Recruiter Recommendations for Resume Optimization**", unsafe_allow_html=True)
+                recommendations = []
+                if score_density < 5:
+                    recommendations.append("Break up overly dense text blocks (exceeding 150 words) into clean bullet points with a focus on single key metrics.")
+                if score_verbs < 5:
+                    recommendations.append("Strengthen descriptions with professional action-oriented verbs (e.g. *spearheaded*, *engineered*, *architected*) rather than passive descriptions.")
+                if score_metrics < 5:
+                    recommendations.append("Quantify achievements by including concrete figures and business impact indicators (e.g., percentages, financial goals, scale of users).")
+                if score_headers < 10:
+                    recommendations.append("Standardize section header titles (e.g. 'Professional Experience', 'Education') to assist automated ATS parsers.")
+                if score_certs < 5:
+                    recommendations.append("Acquire and list relevant professional credentials/certifications (e.g. PMP, CSM, AWS/Azure certifications) to demonstrate continuous learning.")
+                
+                if recommendations:
+                    for rec in recommendations:
+                        st.markdown(f"- <span style='font-size:0.85rem; color:#818cf8;'>{rec}</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown("- <span style='font-size:0.85rem; color:#10b981;'>No issues found! Your resume formatting and content structure are highly optimized for automated scanning.</span>", unsafe_allow_html=True)
                     
             # Tab 4: Bias Check
             with detail_tabs[3]:
