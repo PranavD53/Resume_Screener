@@ -32,7 +32,7 @@ else:
     # Scan files
     files = [
         os.path.join(resume_dir, f) for f in os.listdir(resume_dir) 
-        if f.lower().endswith(('.docx', '.pdf'))
+        if f.lower().endswith(('.docx', '.pdf', '.txt'))
     ]
     print(f"Found {len(files)} local candidate resumes in the folder.")
     

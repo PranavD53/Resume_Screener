@@ -26,6 +26,15 @@ def extract_text_from_pdf(file_path):
         print(f"Error reading PDF '{file_path}': {e}")
         return ""
 
+# Extract text from plain text files
+def extract_text_from_txt(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            return f.read()
+    except Exception as e:
+        print(f"Error reading TXT '{file_path}': {e}")
+        return ""
+
 # Extract text from DOCX (paragraphs + tables)
 def extract_text_from_docx(file_path):
     try:
@@ -286,7 +295,10 @@ def extract_skills(text, skills_vocab):
     if not skills_vocab:
         return []
     try:
-        text_lower = text.lower()
+        # Normalize all whitespaces (including newlines and multiple spaces)
+        # to a single space, preventing split words in PDFs or TXT files
+        text_clean = re.sub(r'\s+', ' ', text.lower())
+        text_lower = text_clean
         extracted = []
         
         for skill in skills_vocab:
@@ -312,8 +324,11 @@ def parse_resume(file_path, skills_vocab=None):
         skills_vocab = load_skills_vocab()
         
     # Check extension
-    if file_path.lower().endswith('.pdf'):
+    ext = file_path.lower()
+    if ext.endswith('.pdf'):
         text = extract_text_from_pdf(file_path)
+    elif ext.endswith('.txt'):
+        text = extract_text_from_txt(file_path)
     else:
         text = extract_text_from_docx(file_path)
         

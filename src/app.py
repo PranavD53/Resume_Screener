@@ -948,27 +948,8 @@ if uploaded_files:
             
             try:
                 ext = f.name.lower()
-                if ext.endswith(('.docx', '.pdf')):
+                if ext.endswith(('.docx', '.pdf', '.txt')):
                     profile = parse_resume(temp_path, skills_vocab)
-                    st.session_state.parsed_uploads[cache_key] = profile
-                    raw_candidates.append(profile)
-                elif ext.endswith('.txt'):
-                    with open(temp_path, 'r', encoding='utf-8', errors='ignore') as txt_f:
-                        text = txt_f.read()
-                    from src.parser import extract_name, extract_email, extract_phone, extract_location, extract_education, extract_experience, extract_skills
-                    profile = {
-                        'filename': f.name,
-                        'filepath': temp_path,
-                        'name': extract_name(text, temp_path),
-                        'email': extract_email(text),
-                        'phone': extract_phone(text),
-                        'location': extract_location(text),
-                        'education_degree': extract_education(text)[0],
-                        'education_level': extract_education(text)[1],
-                        'experience_years': extract_experience(text),
-                        'skills': extract_skills(text, skills_vocab),
-                        'text': text
-                    }
                     st.session_state.parsed_uploads[cache_key] = profile
                     raw_candidates.append(profile)
             except Exception as e:
