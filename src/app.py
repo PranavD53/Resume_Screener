@@ -675,7 +675,7 @@ def md_to_html(text):
 def render_chatbot(scored_candidates=None, jd_title="", jd_text=""):
     # Initialize session state for chatbot
     if 'chat_open' not in st.session_state:
-        st.session_state.chat_open = True
+        st.session_state.chat_open = False
         
     # Draw floating chat trigger button at bottom right (Targeted via chat-btn-marker)
     chat_btn_container = st.container()
