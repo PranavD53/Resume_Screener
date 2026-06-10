@@ -460,6 +460,104 @@ def get_theme_css():
             color: white !important;
             border-color: var(--accent) !important;
         }
+
+        /* ----------------- MOBILE & RESPONSIVE COMPATIBILITY ----------------- */
+        @media (max-width: 768px) {
+            /* Reduce page spacing on mobile devices */
+            .block-container {
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+                padding-top: 1.5rem !important;
+                padding-bottom: 1.5rem !important;
+            }
+            
+            /* Compact Glass Header */
+            .glass-header-panel {
+                padding: 16px 20px !important;
+                margin: 10px auto 20px auto !important;
+                border-radius: 12px !important;
+            }
+            .main-title {
+                font-size: 1.85rem !important;
+                letter-spacing: -0.02em !important;
+                text-align: center;
+            }
+            .subtitle {
+                font-size: 0.85rem !important;
+                margin-bottom: 0px !important;
+                text-align: center;
+            }
+            
+            /* Card content paddings on smaller viewports */
+            div[data-testid="stVerticalBlock"]:has(div.step1-card-marker):not(:has(div[data-testid="stVerticalBlock"] div.step1-card-marker)),
+            div[data-testid="stVerticalBlock"]:has(div.step2-card-marker):not(:has(div[data-testid="stVerticalBlock"] div.step2-card-marker)) {
+                padding: 16px !important;
+                margin-bottom: 16px !important;
+                border-radius: 12px !important;
+            }
+            
+            /* Kanban layout: reduce heights to avoid huge gaps on vertical stacked layouts */
+            .kanban-col {
+                min-height: auto !important;
+                margin-bottom: 16px !important;
+                padding: 12px !important;
+            }
+            .kanban-header {
+                padding: 8px !important;
+                font-size: 0.95rem !important;
+                margin-bottom: 10px !important;
+            }
+            
+            /* Adjust floating triggers */
+            div[data-testid="stVerticalBlock"]:has(div.chat-btn-marker):not(:has(div[data-testid="stVerticalBlock"] div.chat-btn-marker)) {
+                bottom: 20px !important;
+                right: 20px !important;
+            }
+            
+            /* Fluid chat window overlay on mobile devices */
+            div[data-testid="stVerticalBlock"]:has(div.chat-window-marker):not(:has(div[data-testid="stVerticalBlock"] div.chat-window-marker)) {
+                bottom: 85px !important;
+                right: 16px !important;
+                left: 16px !important;
+                width: auto !important;
+                height: 60vh !important;
+                max-height: 480px !important;
+                padding: 14px !important;
+                border-radius: 12px !important;
+            }
+            
+            /* Scale radar/gauge chart heights for narrow columns */
+            .user-bubble {
+                font-size: 0.8rem !important;
+            }
+            .assistant-bubble {
+                font-size: 0.8rem !important;
+            }
+        }
+        
+        /* Force chat input form elements to stay side-by-side on mobile devices */
+        div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 6px !important;
+            align-items: center !important;
+        }
+        div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div {
+            width: auto !important;
+            min-width: 0 !important;
+        }
+        div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div:first-child {
+            flex-grow: 1 !important;
+        }
+        div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div:last-child {
+            flex-grow: 0 !important;
+            width: 54px !important;
+        }
+        div[data-testid="stForm"] div[data-testid="stHorizontalBlock"] button {
+            width: 100% !important;
+            height: 42px !important;
+        }
     </style>
     """
 
