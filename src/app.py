@@ -990,9 +990,9 @@ if 'parsed_uploads' not in st.session_state:
     st.session_state.parsed_uploads = {}
 if 'kanban_stages' not in st.session_state:
     st.session_state.kanban_stages = {}
-# Chat Window is OPEN by default at startup floating in the right corner
+# Chat Window is HIDDEN by default at startup floating in the right corner
 if 'chat_open' not in st.session_state:
-    st.session_state.chat_open = True
+    st.session_state.chat_open = False
 
 # Check model assets
 if not match_model:
